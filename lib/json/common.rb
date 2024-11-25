@@ -143,7 +143,10 @@ module JSON
   # :startdoc:
 
   # This exception is raised if a generator or unparser error occurs.
-  class GeneratorError < JSONError; end
+  class GeneratorError < JSONError
+    attr_reader :invalid_object
+  end
+
   # For backwards compatibility
   UnparserError = GeneratorError # :nodoc:
 

@@ -71,6 +71,18 @@ static void generate_json_float(FBuffer *buffer, struct generate_json_data *data
 
 static int usascii_encindex, utf8_encindex, binary_encindex;
 
+
+#define PARSE_ERROR_FRAGMENT_LEN 32
+#ifdef RBIMPL_ATTR_NORETURN
+RBIMPL_ATTR_NORETURN()
+#endif
+static void raise_generator_error(const char *message, VALUE invalid_object)
+{
+    VALUE exc = rb_exc_new_cstr(eGeneratorError, message);
+    rb_ivar_set(exc, rb_intern("@invalid_object"), invalid_object)
+    rb_exc_raise(exc);
+}
+
 /* Converts in_string to a JSON string (without the wrapping '"'
  * characters) in FBuffer out_buffer.
  *
@@ -1537,10 +1549,11 @@ void Init_generator(void)
     VALUE mExt = rb_define_module_under(mJSON, "Ext");
     VALUE mGenerator = rb_define_module_under(mExt, "Generator");
 
+    rb_global_variable(&eGeneratorError);
     eGeneratorError = rb_path2class("JSON::GeneratorError");
+
+    rb_global_variable(&eNestingError);
     eNestingError = rb_path2class("JSON::NestingError");
-    rb_gc_register_mark_object(eGeneratorError);
-    rb_gc_register_mark_object(eNestingError);
 
     cState = rb_define_class_under(mGenerator, "State", rb_cObject);
     rb_define_alloc_func(cState, cState_s_allocate);
