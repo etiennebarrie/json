@@ -286,9 +286,11 @@ class JSONGeneratorTest < Test::Unit::TestCase
     assert_raise(JSON::NestingError) { generate(ary) }
     assert_raise(JSON::NestingError) { JSON.pretty_generate(ary) }
     s = JSON.state.new
-    assert_equal 0, s.depth
-    assert_raise(JSON::NestingError) { ary.to_json(s) }
-    assert_equal 100, s.depth
+    assert_deprecated_warning(/JSON::State/) do
+      assert_equal 0, s.depth
+      assert_raise(JSON::NestingError) { ary.to_json(s) }
+      assert_equal 100, s.depth
+    end
   end
 
   def test_buffer_initial_length
