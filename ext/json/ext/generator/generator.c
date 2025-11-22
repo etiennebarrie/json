@@ -24,7 +24,6 @@ typedef struct JSON_Generator_StateStruct {
     VALUE as_json;
 
     long max_nesting;
-    long depth;
     long buffer_initial_length;
 
     enum duplicate_key_action on_duplicate_key;
@@ -40,7 +39,7 @@ static VALUE mJSON, cState, cFragment, eGeneratorError, eNestingError, Encoding_
 
 static ID i_to_s, i_to_json, i_new, i_encode;
 static VALUE sym_indent, sym_space, sym_space_before, sym_object_nl, sym_array_nl, sym_max_nesting, sym_allow_nan, sym_allow_duplicate_key,
-             sym_ascii_only, sym_depth, sym_buffer_initial_length, sym_script_safe, sym_escape_slash, sym_strict, sym_as_json;
+             sym_ascii_only, sym_buffer_initial_length, sym_script_safe, sym_escape_slash, sym_strict, sym_as_json;
 
 
 #define GET_STATE_TO(self, state) \
@@ -1474,16 +1473,6 @@ static VALUE generate_json_try(VALUE d)
     return fbuffer_finalize(data->buffer);
 }
 
-// Preserves the deprecated behavior of State#depth being set.
-static VALUE generate_json_ensure_deprecated(VALUE d)
-{
-    struct generate_json_data *data = (struct generate_json_data *)d;
-    fbuffer_free(data->buffer);
-    data->state->depth = data->depth;
-
-    return Qundef;
-}
-
 static VALUE generate_json_ensure(VALUE d)
 {
     struct generate_json_data *data = (struct generate_json_data *)d;
@@ -1509,7 +1498,7 @@ static VALUE cState_partial_generate(VALUE self, VALUE obj, generator_func func,
         .obj = obj,
         .func = func
     };
-    return rb_ensure(generate_json_try, (VALUE)&data, generate_json_ensure_deprecated, (VALUE)&data);
+    return rb_ensure(generate_json_try, (VALUE)&data, generate_json_ensure, (VALUE)&data);
 }
 
 /* call-seq:
@@ -1925,31 +1914,6 @@ static VALUE cState_allow_duplicate_key_p(VALUE self)
 }
 
 /*
- * call-seq: depth
- *
- * This integer returns the current depth of data structure nesting.
- */
-static VALUE cState_depth(VALUE self)
-{
-    GET_STATE(self);
-    return LONG2FIX(state->depth);
-}
-
-/*
- * call-seq: depth=(depth)
- *
- * This sets the maximum level of data structure nesting in the generated JSON
- * to the integer depth, max_nesting = 0 if no maximum should be checked.
- */
-static VALUE cState_depth_set(VALUE self, VALUE depth)
-{
-    rb_check_frozen(self);
-    GET_STATE(self);
-    state->depth = long_config(depth);
-    return Qnil;
-}
-
-/*
  * call-seq: buffer_initial_length
  *
  * This integer returns the current initial length of the buffer.
@@ -2010,7 +1974,6 @@ static int configure_state_i(VALUE key, VALUE val, VALUE _arg)
     else if (key == sym_max_nesting)           { state->max_nesting = long_config(val); }
     else if (key == sym_allow_nan)             { state->allow_nan = RTEST(val); }
     else if (key == sym_ascii_only)            { state->ascii_only = RTEST(val); }
-    else if (key == sym_depth)                 { state->depth = long_config(val); }
     else if (key == sym_buffer_initial_length) { buffer_initial_length_set(state, val); }
     else if (key == sym_script_safe)           { state->script_safe = RTEST(val); }
     else if (key == sym_escape_slash)          { state->script_safe = RTEST(val); }
@@ -2134,8 +2097,6 @@ void Init_generator(void)
     rb_define_method(cState, "allow_nan=", cState_allow_nan_set, 1);
     rb_define_method(cState, "ascii_only?", cState_ascii_only_p, 0);
     rb_define_method(cState, "ascii_only=", cState_ascii_only_set, 1);
-    rb_define_method(cState, "_depth", cState_depth, 0); // :nodoc:
-    rb_define_method(cState, "_depth=", cState_depth_set, 1); // :nodoc:
     rb_define_method(cState, "buffer_initial_length", cState_buffer_initial_length, 0);
     rb_define_method(cState, "buffer_initial_length=", cState_buffer_initial_length_set, 1);
     rb_define_method(cState, "generate", cState_generate, -1);
@@ -2197,7 +2158,6 @@ void Init_generator(void)
     sym_max_nesting = ID2SYM(rb_intern("max_nesting"));
     sym_allow_nan = ID2SYM(rb_intern("allow_nan"));
     sym_ascii_only = ID2SYM(rb_intern("ascii_only"));
-    sym_depth = ID2SYM(rb_intern("depth"));
     sym_buffer_initial_length = ID2SYM(rb_intern("buffer_initial_length"));
     sym_script_safe = ID2SYM(rb_intern("script_safe"));
     sym_escape_slash = ID2SYM(rb_intern("escape_slash"));

@@ -229,7 +229,6 @@ class JSONGeneratorTest < Test::Unit::TestCase
       :as_json               => false,
       :ascii_only            => false,
       :buffer_initial_length => 1024,
-      :depth                 => 0,
       :script_safe           => false,
       :strict                => false,
       :indent                => "",
@@ -247,7 +246,6 @@ class JSONGeneratorTest < Test::Unit::TestCase
       :as_json               => false,
       :ascii_only            => false,
       :buffer_initial_length => 1024,
-      :depth                 => 0,
       :script_safe           => false,
       :strict                => false,
       :indent                => "",
@@ -279,20 +277,6 @@ class JSONGeneratorTest < Test::Unit::TestCase
       assert_raise(GeneratorError) { pretty_generate([JSON::MinusInfinity]) }
       assert_equal "[\n  -Infinity\n]", pretty_generate([JSON::MinusInfinity], :allow_nan => true)
     end
-  end
-
-  def test_depth
-    ary = []; ary << ary
-    assert_raise(JSON::NestingError) { generate(ary) }
-    assert_raise(JSON::NestingError) { JSON.pretty_generate(ary) }
-    s = JSON.state.new
-    assert_deprecated_warning(/JSON::State/) do
-      assert_equal 0, s.depth
-      assert_raise(JSON::NestingError) { ary.to_json(s) }
-      assert_equal 100, s.depth
-    end
-    assert_deprecated_warning(/depth/) { JSON.state.new(depth: 1) }
-    assert_deprecated_warning(/depth/) { JSON.state.new.configure(depth: 1) }
   end
 
   def test_buffer_initial_length
@@ -413,9 +397,7 @@ class JSONGeneratorTest < Test::Unit::TestCase
 
   def test_json_state_to_h_roundtrip
     state = JSON.state.new
-    state_to_h = state.to_h.dup
-    state_to_h.delete(:depth) { flunk "remove me: State#to_h no longer includes :depth" }
-    assert_equal state.to_h, JSON.state.new(state_to_h).to_h
+    assert_equal state.to_h, JSON.state.new(state.to_h).to_h
   end
 
   def test_json_generate
@@ -922,5 +904,14 @@ class JSONGeneratorTest < Test::Unit::TestCase
         end
       end
     end
+  end
+
+  # The case when the State is frozen is tested in JSONCoderTest#test_nesting_recovery
+  def test_nesting_recovery
+    state = JSON::State.new
+    ary = []
+    ary << ary
+    assert_raise(JSON::NestingError) { state.generate_new(ary) }
+    assert_equal '{"a":1}', state.generate({ a: 1 })
   end
 end

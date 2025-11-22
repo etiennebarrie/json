@@ -330,6 +330,7 @@ module JSON
         def to_h
           result = {}
           instance_variables.each do |iv|
+            next if iv == :@depth
             iv = iv.to_s[1..-1]
             result[iv.to_sym] = self[iv]
           end
