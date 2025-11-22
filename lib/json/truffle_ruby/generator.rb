@@ -209,13 +209,31 @@ module JSON
         end
         # :startdoc:
 
-        # This integer returns the current depth data structure nesting in the
+        # Deprecated: This integer returns the current depth data structure nesting in the
         # generated JSON.
-        attr_accessor :depth
+        def depth
+          ::JSON.deprecation_warning("JSON::State#depth is deprecated and will be removed in json 3.0.0")
+          @depth
+        end
+
+        def depth=(depth)
+          ::JSON.deprecation_warning("JSON::State#depth= is deprecated and will be removed in json 3.0.0")
+          @depth = depth
+        end
+
+        # :stopdoc:
+        def _depth
+          @depth
+        end
+
+        def _depth=(depth)
+          @depth = depth
+        end
+        # :startdoc:
 
         def check_max_nesting # :nodoc:
           return if @max_nesting.zero?
-          current_nesting = depth + 1
+          current_nesting = @depth + 1
           current_nesting > @max_nesting and
             raise NestingError, "nesting of #{current_nesting} is too deep. Did you try to serialize objects with circular references?"
         end
@@ -502,14 +520,14 @@ module JSON
 
           def json_shift(state)
             state.object_nl.empty? or return ''
-            state.indent * state.depth
+            state.indent * state._depth
           end
 
           def json_transform(state)
-            depth = state.depth += 1
+            depth = state._depth += 1
 
             if empty?
-              state.depth -= 1
+              state._depth -= 1
               return '{}'
             end
 
@@ -569,7 +587,7 @@ module JSON
               end
               first = false
             }
-            depth = state.depth -= 1
+            depth = state._depth -= 1
             unless first
               result << state.object_nl
               result << state.indent * depth if indent
@@ -593,10 +611,10 @@ module JSON
           private
 
           def json_transform(state)
-            depth = state.depth += 1
+            depth = state._depth += 1
 
             if empty?
-              state.depth -= 1
+              state._depth -= 1
               return '[]'
             end
 
@@ -630,7 +648,7 @@ module JSON
               end
               first = false
             }
-            depth = state.depth -= 1
+            depth = state._depth -= 1
             result << state.array_nl
             result << state.indent * depth if indent
             result << ']'
@@ -657,9 +675,9 @@ module JSON
                 end
 
                 state.check_max_nesting
-                state.depth += 1
+                state._depth += 1
                 result = casted_value.to_json(state, *args)
-                state.depth -= 1
+                state._depth -= 1
                 result
               else
                 raise GeneratorError.new("#{self} not allowed in JSON", self)
