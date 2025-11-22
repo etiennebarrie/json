@@ -2131,8 +2131,8 @@ void Init_generator(void)
     rb_define_method(cState, "allow_nan=", cState_allow_nan_set, 1);
     rb_define_method(cState, "ascii_only?", cState_ascii_only_p, 0);
     rb_define_method(cState, "ascii_only=", cState_ascii_only_set, 1);
-    rb_define_method(cState, "depth", cState_depth, 0);
-    rb_define_method(cState, "depth=", cState_depth_set, 1);
+    rb_define_method(cState, "_depth", cState_depth, 0); // :nodoc:
+    rb_define_method(cState, "_depth=", cState_depth_set, 1); // :nodoc:
     rb_define_method(cState, "buffer_initial_length", cState_buffer_initial_length, 0);
     rb_define_method(cState, "buffer_initial_length=", cState_buffer_initial_length_set, 1);
     rb_define_method(cState, "generate", cState_generate, -1);
