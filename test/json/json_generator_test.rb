@@ -906,6 +906,12 @@ class JSONGeneratorTest < Test::Unit::TestCase
     end
   end
 
+  def test_depth_removed
+    assert_raise NoMethodError do
+      JSON::State.new.depth
+    end
+  end
+
   # The case when the State is frozen is tested in JSONCoderTest#test_nesting_recovery
   def test_nesting_recovery
     state = JSON::State.new
