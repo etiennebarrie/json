@@ -30,6 +30,9 @@ module JSON
               raise TypeError, "can't convert #{opts.class} into Hash"
             end
           end
+          if opts.key?(:depth)
+            ::JSON.deprecation_warning("JSON::State#depth= is deprecated and will be removed in json 3.0.0")
+          end
           _configure(opts)
         end
 

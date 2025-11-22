@@ -291,6 +291,8 @@ class JSONGeneratorTest < Test::Unit::TestCase
       assert_raise(JSON::NestingError) { ary.to_json(s) }
       assert_equal 100, s.depth
     end
+    assert_deprecated_warning(/depth/) { JSON.state.new(depth: 1) }
+    assert_deprecated_warning(/depth/) { JSON.state.new.configure(depth: 1) }
   end
 
   def test_buffer_initial_length
@@ -411,7 +413,9 @@ class JSONGeneratorTest < Test::Unit::TestCase
 
   def test_json_state_to_h_roundtrip
     state = JSON.state.new
-    assert_equal state.to_h, JSON.state.new(state.to_h).to_h
+    state_to_h = state.to_h.dup
+    state_to_h.delete(:depth) { flunk "remove me: State#to_h no longer includes :depth" }
+    assert_equal state.to_h, JSON.state.new(state_to_h).to_h
   end
 
   def test_json_generate
