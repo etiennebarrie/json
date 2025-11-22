@@ -30,9 +30,6 @@ module JSON
               raise TypeError, "can't convert #{opts.class} into Hash"
             end
           end
-          if opts.key?(:depth)
-            ::JSON.deprecation_warning("JSON::State#depth= is deprecated and will be removed in json 3.0.0")
-          end
           _configure(opts)
         end
 
@@ -55,7 +52,6 @@ module JSON
             max_nesting: max_nesting,
             script_safe: script_safe?,
             strict: strict?,
-            depth: _depth,
             buffer_initial_length: buffer_initial_length,
           }
 
@@ -99,23 +95,6 @@ module JSON
           else
             instance_variable_set "@#{name}", value
           end
-        end
-
-        # call-seq: depth
-        #
-        # This integer returns the current depth of data structure nesting.
-        def depth
-          ::JSON.deprecation_warning("JSON::State#depth is deprecated and will be removed in json 3.0.0")
-          _depth
-        end
-
-        # call-seq: depth=(depth)
-        #
-        # This sets the initial level of data structure nesting in the generated JSON
-        # to the integer depth, which is compared against max_nesting.
-        def depth=(depth)
-          ::JSON.deprecation_warning("JSON::State#depth= is deprecated and will be removed in json 3.0.0")
-          self._depth = depth
         end
       end
     end
