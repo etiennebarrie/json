@@ -159,7 +159,7 @@ module JSON
           @allow_nan             = false
           @ascii_only            = false
           @as_json               = false
-          @depth                 = 0
+          @_depth                 = 0
           @buffer_initial_length = 1024
           @script_safe           = false
           @strict                = false
@@ -209,31 +209,19 @@ module JSON
         end
         # :startdoc:
 
-        # Deprecated: This integer returns the current depth data structure nesting in the
-        # generated JSON.
-        def depth
-          ::JSON.deprecation_warning("JSON::State#depth is deprecated and will be removed in json 3.0.0")
-          @depth
-        end
-
-        def depth=(depth)
-          ::JSON.deprecation_warning("JSON::State#depth= is deprecated and will be removed in json 3.0.0")
-          @depth = depth
-        end
-
         # :stopdoc:
         def _depth
-          @depth
+          @_depth
         end
 
         def _depth=(depth)
-          @depth = depth
+          @_depth = depth
         end
         # :startdoc:
 
         def check_max_nesting # :nodoc:
           return if @max_nesting.zero?
-          current_nesting = @depth + 1
+          current_nesting = @_depth + 1
           current_nesting > @max_nesting and
             raise NestingError, "nesting of #{current_nesting} is too deep. Did you try to serialize objects with circular references?"
         end
@@ -291,7 +279,7 @@ module JSON
           @allow_nan             = !!opts[:allow_nan]         if opts.key?(:allow_nan)
           @as_json               = opts[:as_json].to_proc     if opts[:as_json]
           @ascii_only            = opts[:ascii_only]          if opts.key?(:ascii_only)
-          @depth                 = opts[:depth] || 0
+          @_depth                 = opts[:depth] || 0
           @buffer_initial_length ||= opts[:buffer_initial_length]
 
           @script_safe = if opts.key?(:script_safe)
@@ -330,7 +318,7 @@ module JSON
         def to_h
           result = {}
           instance_variables.each do |iv|
-            next if iv == :@depth
+            next if iv == :@_depth
             iv = iv.to_s[1..-1]
             result[iv.to_sym] = self[iv]
           end
@@ -372,7 +360,7 @@ module JSON
         end
 
         private def initialize_copy(_orig)
-          @depth = 0
+          @_depth = 0
         end
 
         # Handles @allow_nan, @buffer_initial_length, other ivars must be the default value (see above)
