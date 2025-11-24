@@ -211,13 +211,20 @@ module JSON
 
         # This integer returns the current depth data structure nesting in the
         # generated JSON.
-        attr_accessor :depth
+        attr_reader :depth
+
+        def depth=(depth)
+          @deprecated_depth = false
+          @depth = depth
+        end
 
         def check_max_nesting # :nodoc:
           return if @max_nesting.zero?
           current_nesting = depth + 1
-          current_nesting > @max_nesting and
+          if current_nesting > @max_nesting
+            @deprecated_depth = true
             raise NestingError, "nesting of #{current_nesting} is too deep. Did you try to serialize objects with circular references?"
+          end
         end
 
         # Returns true, if circular data structures are checked,
@@ -330,6 +337,7 @@ module JSON
         # created this method raises a
         # GeneratorError exception.
         def generate(obj, anIO = nil)
+          depth = @depth
           if @indent.empty? and @space.empty? and @space_before.empty? and @object_nl.empty? and @array_nl.empty? and
               !@ascii_only and !@script_safe and @max_nesting == 0 and (!@strict || Symbol === obj)
             result = generate_json(obj, ''.dup)
@@ -346,11 +354,25 @@ module JSON
           else
             result
           end
+        ensure
+          @deprecated_depth = depth != @depth
         end
 
         def generate_new(obj, anIO = nil) # :nodoc:
           dup.generate(obj, anIO)
         end
+
+        module DeprecatedDepth
+          def depth
+            if @deprecated_depth
+              ::JSON.deprecation_warning("JSON::State#depth mutated by generate is deprecated and will be removed in json 3.0.0.", 2)
+              @deprecated_depth = false
+            end
+            super
+          end
+        end
+        private_constant :DeprecatedDepth
+        prepend DeprecatedDepth
 
         # Handles @allow_nan, @buffer_initial_length, other ivars must be the default value (see above)
         private def generate_json(obj, buf)

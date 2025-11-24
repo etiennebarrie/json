@@ -109,6 +109,11 @@ public class GeneratorState extends RubyObject {
      */
     private int depth = 0;
 
+    /**
+     * Whether depth's value comes from a NestingError (deprecated behavior).
+     */
+    private boolean deprecatedDepth = false;
+
     static final ObjectAllocator ALLOCATOR = GeneratorState::new;
 
     public GeneratorState(Ruby runtime, RubyClass metaClass) {
@@ -233,7 +238,9 @@ public class GeneratorState extends RubyObject {
      */
     @JRubyMethod
     public IRubyObject generate(ThreadContext context, IRubyObject obj, IRubyObject io) {
+        int original_depth = depth;
         IRubyObject result = Generator.generateJson(context, obj, this, io);
+        deprecatedDepth = original_depth != depth;
         RuntimeInfo info = RuntimeInfo.forRuntime(context.runtime);
         if (!(result instanceof RubyString)) {
             return result;
@@ -266,6 +273,13 @@ public class GeneratorState extends RubyObject {
     public IRubyObject generate_new(ThreadContext context, IRubyObject obj) {
         GeneratorState newState = (GeneratorState)dup();
         return newState.generate(context, obj, context.nil);
+    }
+
+    @JRubyMethod(name="deprecated_depth?", visibility=Visibility.PRIVATE)
+    public RubyBoolean deprecated_depth_p(ThreadContext context) {
+        boolean deprecated = deprecatedDepth;
+        deprecatedDepth = false;
+        return RubyBoolean.newBoolean(context, deprecated == true);
     }
 
     @JRubyMethod(name="[]")
@@ -498,6 +512,7 @@ public class GeneratorState extends RubyObject {
     @JRubyMethod(name="depth=")
     public IRubyObject depth_set(IRubyObject vDepth) {
         checkFrozen();
+        deprecatedDepth = false;
         depth = RubyNumeric.fix2int(vDepth);
         return vDepth;
     }
@@ -635,6 +650,7 @@ public class GeneratorState extends RubyObject {
     private void checkMaxNesting(ThreadContext context) {
         if (maxNesting != 0 && depth > maxNesting) {
             depth--;
+            deprecatedDepth = true;
             throw Utils.newException(context, Utils.M_NESTING_ERROR, "nesting of " + depth + " is too deep. Did you try to serialize objects with circular references?");
         }
     }
