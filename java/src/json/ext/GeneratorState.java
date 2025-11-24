@@ -110,9 +110,9 @@ public class GeneratorState extends RubyObject {
     private int depth = 0;
 
     /**
-     * Whether depth's value comes from a NestingError (deprecated behavior).
+     * The depth at the start of a serialization of an object.
      */
-    private boolean deprecatedDepth = false;
+    private int originalDepth = -1;
 
     static final ObjectAllocator ALLOCATOR = GeneratorState::new;
 
@@ -152,7 +152,11 @@ public class GeneratorState extends RubyObject {
         RubyClass klass = info.generatorStateClass.get();
         if (opts != null) {
             // if the given parameter is a Generator::State, return itself
-            if (klass.isInstance(opts)) return (GeneratorState)opts;
+            if (klass.isInstance(opts)) {
+                GeneratorState state = (GeneratorState)opts;
+                state.recordDepth();
+                return state;
+            }
 
             // if the given parameter is a Hash, pass it to the instantiator
             if (context.runtime.getHash().isInstance(opts)) {
@@ -238,9 +242,9 @@ public class GeneratorState extends RubyObject {
      */
     @JRubyMethod
     public IRubyObject generate(ThreadContext context, IRubyObject obj, IRubyObject io) {
-        int original_depth = depth;
+        originalDepth = depth;
         IRubyObject result = Generator.generateJson(context, obj, this, io);
-        deprecatedDepth = original_depth != depth;
+        depth = originalDepth;
         RuntimeInfo info = RuntimeInfo.forRuntime(context.runtime);
         if (!(result instanceof RubyString)) {
             return result;
@@ -273,13 +277,6 @@ public class GeneratorState extends RubyObject {
     public IRubyObject generate_new(ThreadContext context, IRubyObject obj) {
         GeneratorState newState = (GeneratorState)dup();
         return newState.generate(context, obj, context.nil);
-    }
-
-    @JRubyMethod(name="deprecated_depth?", visibility=Visibility.PRIVATE)
-    public RubyBoolean deprecated_depth_p(ThreadContext context) {
-        boolean deprecated = deprecatedDepth;
-        deprecatedDepth = false;
-        return RubyBoolean.newBoolean(context, deprecated == true);
     }
 
     @JRubyMethod(name="[]")
@@ -512,7 +509,6 @@ public class GeneratorState extends RubyObject {
     @JRubyMethod(name="depth=")
     public IRubyObject depth_set(IRubyObject vDepth) {
         checkFrozen();
-        deprecatedDepth = false;
         depth = RubyNumeric.fix2int(vDepth);
         return vDepth;
     }
@@ -643,15 +639,20 @@ public class GeneratorState extends RubyObject {
         return --depth;
     }
 
+    public void recordDepth() {
+        if (originalDepth < 0) originalDepth = depth;
+    }
+
     /**
      * Checks if the current depth is allowed as per this state's options.
      * @param context The current context
      */
     private void checkMaxNesting(ThreadContext context) {
         if (maxNesting != 0 && depth > maxNesting) {
-            depth--;
-            deprecatedDepth = true;
-            throw Utils.newException(context, Utils.M_NESTING_ERROR, "nesting of " + depth + " is too deep. Did you try to serialize objects with circular references?");
+            int currentNesting = --depth;
+            depth = originalDepth;
+            originalDepth = -1;
+            throw Utils.newException(context, Utils.M_NESTING_ERROR, "nesting of " + currentNesting + " is too deep. Did you try to serialize objects with circular references?");
         }
     }
 }

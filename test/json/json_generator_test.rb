@@ -297,45 +297,18 @@ class JSONGeneratorTest < Test::Unit::TestCase
     assert_raise(JSON::NestingError) { JSON.pretty_generate(ary) }
   end
 
-  def test_depth_deprecation_warning_to_json
+  def test_depth_nesting_error_to_json
     ary = []; ary << ary
     s = JSON.state.new(depth: 1)
     assert_raise(JSON::NestingError) { ary.to_json(s) }
-    assert_deprecated_warning(/depth mutated by generate/) do
-      assert_equal 100, s.depth
-    end
-    assert_warning("") { s.depth }
+    assert_equal 1, s.depth
   end
 
-  def test_depth_deprecation_warning_generate
+  def test_depth_nesting_error_generate
     ary = []; ary << ary
     s = JSON.state.new(depth: 1)
     assert_raise(JSON::NestingError) { s.generate(ary) }
-    assert_deprecated_warning(/depth mutated by generate/) do
-      assert_equal 100, s.depth
-    end
-    assert_warning("") { s.depth }
-  end
-
-  def test_depth_deprecation_warning_clear_set
-    ary = []; ary << ary
-    s = JSON.state.new(depth: 1)
-    assert_raise(JSON::NestingError) { s.generate(ary) }
-    s.depth = 0
-    assert_warning("") { s.depth }
-  end
-
-  def test_depth_deprecation_warning_clear_generate
-    ary = []; ary << ary
-    s = JSON.state.new
-    assert_raise(JSON::NestingError) { s.generate(ary) }
-    # "".to_json(s) doesn't clear the deprecation
-    s.generate("")
-    assert_warning("") { assert_equal 100, s.depth }
-    if RUBY_ENGINE == "truffleruby"
-      s.generate(true)
-      assert_warning("") { assert_equal 100, s.depth }
-    end
+    assert_equal 1, s.depth
   end
 
   def test_buffer_initial_length
@@ -968,7 +941,7 @@ class JSONGeneratorTest < Test::Unit::TestCase
     state = JSON::State.new
     ary = []
     ary << ary
-    assert_raise(JSON::NestingError) { state.generate_new(ary) }
+    assert_raise(JSON::NestingError) { state.generate(ary) }
     assert_equal '{"a":1}', state.generate({ a: 1 })
   end
 end

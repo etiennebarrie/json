@@ -34,7 +34,6 @@ typedef struct JSON_Generator_StateStruct {
     bool ascii_only;
     bool script_safe;
     bool strict;
-    bool deprecated_depth;
 } JSON_Generator_State;
 
 static VALUE mJSON, cState, cFragment, eGeneratorError, eNestingError, Encoding_UTF_8;
@@ -1475,24 +1474,6 @@ static VALUE generate_json_try(VALUE d)
     return fbuffer_finalize(data->buffer);
 }
 
-// Preserves the deprecated behavior of State#depth being set.
-static VALUE generate_json_ensure_deprecated(VALUE d)
-{
-    struct generate_json_data *data = (struct generate_json_data *)d;
-    fbuffer_free(data->buffer);
-    if (!RTEST(data->vstate)) return Qundef;
-
-    if (data->state->depth != data->depth) {
-        data->state->deprecated_depth = true;
-        data->state->depth = data->depth;
-    }
-    else {
-        data->state->deprecated_depth = false;
-    }
-
-    return Qundef;
-}
-
 static VALUE generate_json_ensure(VALUE d)
 {
     struct generate_json_data *data = (struct generate_json_data *)d;
@@ -1519,7 +1500,7 @@ static VALUE cState_partial_generate(VALUE self, VALUE obj, generator_func func,
         .obj = obj,
         .func = func
     };
-    return rb_ensure(generate_json_try, (VALUE)&data, generate_json_ensure_deprecated, (VALUE)&data);
+    return rb_ensure(generate_json_try, (VALUE)&data, generate_json_ensure, (VALUE)&data);
 }
 
 /* call-seq:
@@ -1536,31 +1517,6 @@ static VALUE cState_generate(int argc, VALUE *argv, VALUE self)
     VALUE obj = argv[0];
     VALUE io = argc > 1 ? argv[1] : Qnil;
     return cState_partial_generate(self, obj, generate_json, io);
-}
-
-static VALUE cState_generate_new(int argc, VALUE *argv, VALUE self)
-{
-    rb_check_arity(argc, 1, 2);
-    VALUE obj = argv[0];
-    VALUE io = argc > 1 ? argv[1] : Qnil;
-
-    GET_STATE(self);
-
-    char stack_buffer[FBUFFER_STACK_SIZE];
-    FBuffer buffer = {
-        .io = RTEST(io) ? io : Qfalse,
-    };
-    fbuffer_stack_init(&buffer, state->buffer_initial_length, stack_buffer, FBUFFER_STACK_SIZE);
-
-    struct generate_json_data data = {
-        .buffer = &buffer,
-        .vstate = Qfalse,
-        .state = state,
-        .depth = state->depth,
-        .obj = obj,
-        .func = generate_json
-    };
-    return rb_ensure(generate_json_try, (VALUE)&data, generate_json_ensure, (VALUE)&data);
 }
 
 static VALUE cState_initialize(int argc, VALUE *argv, VALUE self)
@@ -1935,14 +1891,6 @@ static VALUE cState_allow_duplicate_key_p(VALUE self)
     }
 }
 
-static VALUE cState_deprecated_depth_p(VALUE self)
-{
-    GET_STATE(self);
-    VALUE result = state->deprecated_depth ? Qtrue : Qfalse;
-    state->deprecated_depth = false;
-    return result;
-}
-
 /*
  * call-seq: depth
  *
@@ -1965,7 +1913,6 @@ static VALUE cState_depth_set(VALUE self, VALUE depth)
     rb_check_frozen(self);
     GET_STATE(self);
     state->depth = long_config(depth);
-    state->deprecated_depth = false;
     return Qnil;
 }
 
@@ -2160,10 +2107,8 @@ void Init_generator(void)
     rb_define_method(cState, "buffer_initial_length", cState_buffer_initial_length, 0);
     rb_define_method(cState, "buffer_initial_length=", cState_buffer_initial_length_set, 1);
     rb_define_method(cState, "generate", cState_generate, -1);
-    rb_define_method(cState, "generate_new", cState_generate_new, -1); // :nodoc:
 
     rb_define_private_method(cState, "allow_duplicate_key?", cState_allow_duplicate_key_p, 0);
-    rb_define_private_method(cState, "deprecated_depth?", cState_deprecated_depth_p, 0);
 
     rb_define_singleton_method(cState, "generate", cState_m_generate, 3);
 

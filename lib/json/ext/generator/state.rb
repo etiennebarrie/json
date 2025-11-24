@@ -97,17 +97,6 @@ module JSON
             instance_variable_set "@#{name}", value
           end
         end
-
-        module DeprecatedDepth
-          def depth
-            if deprecated_depth?
-              ::JSON.deprecation_warning("JSON::State#depth mutated by generate is deprecated and will be removed in json 3.0.0.", 2)
-            end
-            super
-          end
-        end
-        private_constant :DeprecatedDepth
-        prepend DeprecatedDepth
       end
     end
   end

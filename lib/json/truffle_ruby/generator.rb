@@ -123,6 +123,7 @@ module JSON
           if opts
             case
             when self === opts
+              opts.record_depth
               return opts
             when opts.respond_to?(:to_hash)
               return new(opts.to_hash)
@@ -211,18 +212,18 @@ module JSON
 
         # This integer returns the current depth data structure nesting in the
         # generated JSON.
-        attr_reader :depth
+        attr_accessor :depth
 
-        def depth=(depth)
-          @deprecated_depth = false
-          @depth = depth
+        def record_depth # :nodoc:
+          @_depth = @depth unless @_depth
         end
 
         def check_max_nesting # :nodoc:
           return if @max_nesting.zero?
           current_nesting = depth + 1
           if current_nesting > @max_nesting
-            @deprecated_depth = true
+            @depth = @_depth
+            @_depth = nil
             raise NestingError, "nesting of #{current_nesting} is too deep. Did you try to serialize objects with circular references?"
           end
         end
@@ -337,6 +338,8 @@ module JSON
         # created this method raises a
         # GeneratorError exception.
         def generate(obj, anIO = nil)
+          return dup.generate(obj, anIO) if frozen?
+
           depth = @depth
           if @indent.empty? and @space.empty? and @space_before.empty? and @object_nl.empty? and @array_nl.empty? and
               !@ascii_only and !@script_safe and @max_nesting == 0 and (!@strict || Symbol === obj)
@@ -355,24 +358,8 @@ module JSON
             result
           end
         ensure
-          @deprecated_depth = depth != @depth
+          @depth = depth unless frozen?
         end
-
-        def generate_new(obj, anIO = nil) # :nodoc:
-          dup.generate(obj, anIO)
-        end
-
-        module DeprecatedDepth
-          def depth
-            if @deprecated_depth
-              ::JSON.deprecation_warning("JSON::State#depth mutated by generate is deprecated and will be removed in json 3.0.0.", 2)
-              @deprecated_depth = false
-            end
-            super
-          end
-        end
-        private_constant :DeprecatedDepth
-        prepend DeprecatedDepth
 
         # Handles @allow_nan, @buffer_initial_length, other ivars must be the default value (see above)
         private def generate_json(obj, buf)
